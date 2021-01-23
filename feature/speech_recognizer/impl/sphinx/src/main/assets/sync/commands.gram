@@ -1,0 +1,5 @@
+#JSGF V1.0;
+
+grammar commands;
+
+public <item> = previous | next | start | restart | end | finish;

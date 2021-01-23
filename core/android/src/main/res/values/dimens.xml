@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <dimen name="half_keyline">8dp</dimen>
+    <dimen name="keyline">24dp</dimen>
+    <dimen name="keyline_32dp">32dp</dimen>
+    <dimen name="keyline_1">16dp</dimen>
+    <dimen name="keyline_2">72dp</dimen>
+
+    <dimen name="core_card_corner_radius">12dp</dimen>
+    <dimen name="core_card_elevation">8dp</dimen>
+    <dimen name="core_card_elevation_2">2dp</dimen>
+
+</resources>

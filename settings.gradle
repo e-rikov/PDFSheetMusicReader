@@ -1,0 +1,9 @@
+include ':app'
+include ':core:main'
+include ':core:android'
+include ':feature:pdf_renderer:android'
+include ':feature:speech_recognizer:main'
+include ':feature:speech_recognizer:impl:android'
+include ':feature:speech_recognizer:impl:sphinx'
+include ':feature:speech_recognizer:impl:vosk'
+rootProject.name = "PDF Sheet Music Reader"
