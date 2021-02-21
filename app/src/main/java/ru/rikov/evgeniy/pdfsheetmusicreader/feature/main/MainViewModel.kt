@@ -1,11 +1,11 @@
 package ru.rikov.evgeniy.pdfsheetmusicreader.feature.main
 
-import androidx.lifecycle.LiveData
+import kotlinx.coroutines.flow.StateFlow
 
 
 interface MainViewModel {
 
-    val currentPage: LiveData<Int>
+    val currentPage: StateFlow<Int>
 
     fun init(pagesCount: Int)
 

@@ -1,9 +1,12 @@
 package ru.rikov.evgeniy.speech_recognizer.impl.vosk
 
 import android.content.Context
-import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
-import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import org.kaldi.Assets
 import org.kaldi.KaldiRecognizer
 import org.kaldi.Model
@@ -18,35 +21,29 @@ class VoskSpeechRecognizer(
 ) : AppSpeechRecognizer {
 
     private var speechService: SpeechService? = null
-    private var observable: Observable<RecognitionState>? = null
-    private var emitter: ObservableEmitter<RecognitionState>? = null
+    private var stateFlow = MutableStateFlow<RecognitionState>(RecognitionState.Initialized)
+    private var job: Job? = null
 
-    override fun startListening(): Observable<RecognitionState> =
-        observable ?: initSpeechService().flatMap {
-            Observable
-                .create<RecognitionState> { emitter ->
-                    this.emitter = emitter
-                    it.addListener(VoskRecognitionListener(emitter))
-                    it.startListening()
-                }
-                .apply {
-                    observable = this
-                }
+    override fun startListening(): StateFlow<RecognitionState> {
+        GlobalScope.launch(Dispatchers.IO) {
+            val speechService = initSpeechService()
+            speechService.addListener(VoskRecognitionListener(stateFlow))
+            speechService.startListening()
         }
 
-    private fun initSpeechService(): Observable<SpeechService> =
-        Observable
-            .fromCallable {
-                val assets = Assets(context)
-                val assetDir = assets.syncAssets()
-                val model = Model("$assetDir/model-android")
-                val recognizer = KaldiRecognizer(model, SAMPLE_RATE)
+        return stateFlow
+    }
 
-                SpeechService(recognizer, SAMPLE_RATE).apply {
-                    speechService = this
-                }
-            }
-            .subscribeOn(Schedulers.io())
+    private fun initSpeechService(): SpeechService {
+        val assets = Assets(context)
+        val assetDir = assets.syncAssets()
+        val model = Model("$assetDir/model-android")
+        val recognizer = KaldiRecognizer(model, SAMPLE_RATE)
+
+        return SpeechService(recognizer, SAMPLE_RATE).apply {
+            speechService = this
+        }
+    }
 
     override fun stopListening() {
         speechService?.also {
@@ -56,10 +53,8 @@ class VoskSpeechRecognizer(
 
         speechService = null
 
-        emitter?.onComplete()
-        emitter = null
-
-        observable = null
+        job?.cancel()
+        job = null
     }
 
 

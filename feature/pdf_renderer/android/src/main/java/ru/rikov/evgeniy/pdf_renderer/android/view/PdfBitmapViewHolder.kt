@@ -9,12 +9,12 @@ import ru.rikov.evgeniy.pdf_renderer.android.R
 
 class PdfBitmapViewHolder(
     parent: ViewGroup
-) : AppRecyclerViewHolder<Bitmap>(parent, R.layout.pdf_renderer_item_page) {
+) : AppRecyclerViewHolder<Bitmap?>(parent, R.layout.pdf_renderer_item_page) {
 
     private val pageBitmap: ImageView = itemView.findViewById(R.id.pageBitmap)
 
 
-    override fun bind(item: Bitmap) {
+    override fun bind(item: Bitmap?) {
         pageBitmap.setImageBitmap(item)
     }
     

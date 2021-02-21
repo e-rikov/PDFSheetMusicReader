@@ -4,9 +4,10 @@ import android.content.Context
 import edu.cmu.pocketsphinx.Assets
 import edu.cmu.pocketsphinx.SpeechRecognizer
 import edu.cmu.pocketsphinx.SpeechRecognizerSetup
-import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
-import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
 import ru.rikov.evgeniy.speech_recognizer.main.AppSpeechRecognizer
 import ru.rikov.evgeniy.speech_recognizer.main.model.RecognitionState
 import java.io.File
@@ -17,40 +18,37 @@ class SphinxSpeechRecognizer(
 ) : AppSpeechRecognizer {
 
     private var recognizer: SpeechRecognizer? = null
-    private var observable: Observable<RecognitionState>? = null
-    private var emitter: ObservableEmitter<RecognitionState>? = null
+    private var stateFlow = MutableStateFlow<RecognitionState>(RecognitionState.Initialized)
+    private var job: Job? = null
 
 
-    override fun startListening(): Observable<RecognitionState> =
-        observable ?: initRecognizer().flatMap {
-            Observable
-                .create<RecognitionState> { emitter ->
-                    this.emitter = emitter
-                    it.addListener(SphinxRecognitionListener(emitter))
-                    it.startListening(COMMANDS_SEARCH)
-                }
-                .doOnNext { state ->
-                    if (state == RecognitionState.EndOfSpeech) {
-                        it.stop()
-                        it.startListening(COMMANDS_SEARCH)
-                    }
-                }
-                .apply {
-                    observable = this
-                }
+    override fun startListening(): StateFlow<RecognitionState> {
+        GlobalScope.launch(Dispatchers.IO) {
+            val recognizer = initRecognizer()
+            recognizer.addListener(SphinxRecognitionListener(stateFlow))
+            recognizer.startListening(COMMANDS_SEARCH)
         }
 
-    private fun initRecognizer(): Observable<SpeechRecognizer> =
-        Observable
-            .fromCallable {
-                val assets = Assets(context)
-                val assetDir = assets.syncAssets()
-
-                createRecognizer(assetDir).apply {
-                    this@SphinxSpeechRecognizer.recognizer = this
+        job = GlobalScope.launch(Dispatchers.IO) {
+            stateFlow.collect {
+                recognizer?.also {
+                    it.stop()
+                    it.startListening(COMMANDS_SEARCH)
                 }
             }
-            .subscribeOn(Schedulers.io())
+        }
+
+        return stateFlow
+    }
+
+    private fun initRecognizer(): SpeechRecognizer {
+        val assets = Assets(context)
+        val assetDir = assets.syncAssets()
+
+        return createRecognizer(assetDir).apply {
+            this@SphinxSpeechRecognizer.recognizer = this
+        }
+    }
 
     override fun stopListening() {
         recognizer?.also {
@@ -60,10 +58,8 @@ class SphinxSpeechRecognizer(
 
         recognizer = null
 
-        emitter?.onComplete()
-        emitter = null
-
-        observable = null
+        job?.cancel()
+        job = null
     }
 
     private fun createRecognizer(assetsDir: File): SpeechRecognizer {

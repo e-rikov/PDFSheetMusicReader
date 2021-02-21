@@ -9,9 +9,8 @@ import android.view.View
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
-import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import ru.rikov.evgeniy.core.android.recycler_view.createAdapter
 import ru.rikov.evgeniy.pdf_renderer.android.view.PdfBitmapViewHolder
 import ru.rikov.evgeniy.pdf_renderer.android.view.PdfPageViewHolder
@@ -61,39 +60,43 @@ class PdfNativeRenderer(
         pages.currentItem = pageNumber
     }
 
-    override fun showPdf(pdfFileUri: Uri?): Single<Int> {
-        if (pdfFileUri == null) return createErrorSingle()
+    override suspend fun showPdf(pdfFileUri: Uri?): Int {
+        if (pdfFileUri == null) throw createPdfRendererThrowable()
 
         showWaiter()
         pdfRenderer?.close()
         pdfRenderer = null
 
-        return try {
+        try {
             activity?.grantUriPermission(
                 fileProviderName,
                 pdfFileUri,
                 Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
+            var pageCount: Int? = null
+
             activity?.contentResolver
                 ?.openFileDescriptor(pdfFileUri, "r")
                 ?.let {
                     pdfRenderer = PdfRenderer(it)
-                    loadPdfViewerPage()
+                    pageCount = loadPdfViewerPage()
                 }
-                ?: createErrorSingle()
+
+            return pageCount ?: throw createPdfRendererThrowable()
         } catch (exception: SecurityException) {
-            createErrorSingle()
+            throw createPdfRendererThrowable()
         } finally {
             activity = null
         }
     }
 
-    override fun showPdf(pdfFilePath: String?): Single<Int> {
-        if (pdfFilePath.isNullOrEmpty()) return createErrorSingle()
+    override suspend fun showPdf(pdfFilePath: String?): Int {
+        if (pdfFilePath.isNullOrEmpty()) throw createPdfRendererThrowable()
 
         showWaiter()
 
         val pdfFile = File(pdfFilePath)
+
         return if (pdfFile.exists()) {
             pdfRenderer?.close()
 
@@ -105,7 +108,7 @@ class PdfNativeRenderer(
 
             loadPdfViewerPage()
         } else {
-            createErrorSingle()
+            throw createPdfRendererThrowable()
         }
     }
 
@@ -118,10 +121,7 @@ class PdfNativeRenderer(
         waiter = null
     }
 
-    private fun createErrorSingle(): Single<Int> =
-        Single.error(Throwable(activity?.getString(R.string.pdf_renderer_fail_loading)))
-
-    private fun initRecyclerView(): Single<Int> {
+    private suspend fun initRecyclerView(): Int {
         val renderer = this.pdfRenderer
 
         return if (renderer != null) {
@@ -134,35 +134,35 @@ class PdfNativeRenderer(
             } else {
                 renderer.initPages(pageCount)
             }
+
+            pageCount
         } else {
-            createErrorSingle()
+            throw createPdfRendererThrowable()
         }
     }
 
-    private fun PdfRenderer.initBitmapPages(): Single<Int> =
-        Single
-            .fromCallable {
-                val items = (0 until pageCount).map {
-                    this.openPage(it)?.renderPage()
-                }
+    private fun createPdfRendererThrowable() =
+        Throwable(activity?.getString(R.string.pdf_renderer_fail_loading))
 
-                this.close()
-                pdfRenderer = null
-                items.filterNotNull()
+    private suspend fun PdfRenderer.initBitmapPages() {
+        val items = (0 until pageCount).map {
+            this.openPage(it)?.renderPage()
+        }
+
+        this.close()
+        pdfRenderer = null
+        items.filterNotNull()
+
+        withContext(Dispatchers.Main) {
+            val adapter = items.createAdapter { parent, _ ->
+                PdfBitmapViewHolder(parent)
             }
-            .subscribeOn(Schedulers.computation())
-            .observeOn(AndroidSchedulers.mainThread())
-            .onErrorResumeNext { Single.never() }
-            .doOnSuccess { items ->
-                val adapter = items.createAdapter { parent, _ ->
-                    PdfBitmapViewHolder(parent)
-                }
 
-                setRecyclerViewAdapter(adapter)
-            }
-            .map { it.size }
+            setRecyclerViewAdapter(adapter)
+        }
+    }
 
-    private fun PdfRenderer.initPages(pageCount: Int): Single<Int> {
+    private fun PdfRenderer.initPages(pageCount: Int) {
         val items = (0 until pageCount).map { it }
 
         val adapter = items.createAdapter { parent, _ ->
@@ -170,7 +170,6 @@ class PdfNativeRenderer(
         }
 
         setRecyclerViewAdapter(adapter)
-        return Single.just(pageCount)
     }
 
     private fun setRecyclerViewAdapter(adapter: RecyclerView.Adapter<*>) {
@@ -178,6 +177,10 @@ class PdfNativeRenderer(
         adapter.notifyDataSetChanged()
     }
 
-    private fun loadPdfViewerPage(): Single<Int> = initRecyclerView().doOnSuccess { hideWaiter() }
+    private suspend fun loadPdfViewerPage(): Int {
+        val pageCount = initRecyclerView()
+        hideWaiter()
+        return pageCount
+    }
 
 }

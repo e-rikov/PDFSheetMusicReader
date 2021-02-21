@@ -70,11 +70,10 @@ dependencies {
     implementation "androidx.constraintlayout:constraintlayout:$androidxConstraintlayout"
     implementation "androidx.core:core-ktx:$androidxCoreKtx"
     implementation "androidx.fragment:fragment-ktx:$androidxFragment"
-    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$androidxLifecycle"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$androidxLifecycle"
     implementation "androidx.viewpager2:viewpager2:$androidxViewPager2"
 
-    implementation "com.github.tbruyelle:rxpermissions:$rxPermissions"
+    implementation "com.markodevcic.peko:peko:$coroutinesPermissions"
 
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitExt"

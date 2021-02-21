@@ -1,16 +1,19 @@
 package ru.rikov.evgeniy.pdfsheetmusicreader.feature.main
 
-import androidx.lifecycle.MutableLiveData
-import ru.rikov.evgeniy.core.android.base.BaseViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import ru.rikov.evgeniy.speech_recognizer.main.AppSpeechRecognizer
 import ru.rikov.evgeniy.speech_recognizer.main.model.RecognitionState
 
 
 class MainViewModelImpl(
     private val speechRecognizer: AppSpeechRecognizer
-) : BaseViewModel(), MainViewModel {
+) : ViewModel(), MainViewModel {
 
-    override val currentPage = MutableLiveData(0)
+    override val currentPage = MutableStateFlow(0)
 
     private var pagesCount: Int = 0
 
@@ -28,9 +31,9 @@ class MainViewModelImpl(
     }
 
     private fun listen() {
-        speechRecognizer
-            .startListening()
-            .addToQueue(::handleResult)
+        viewModelScope.launch {
+            speechRecognizer.startListening().collect(::handleResult)
+        }
     }
     
     private fun handleResult(state: RecognitionState) {
@@ -69,7 +72,7 @@ class MainViewModelImpl(
     }
 
     private fun scrollToNextPage() {
-        val nextItemIndex = currentPage.value!! + 1
+        val nextItemIndex = currentPage.value + 1
 
         if (nextItemIndex < pagesCount) {
             currentPage.value = nextItemIndex
@@ -77,7 +80,7 @@ class MainViewModelImpl(
     }
 
     private fun scrollToPrevPage() {
-        val prevItemIndex = currentPage.value!! - 1
+        val prevItemIndex = currentPage.value - 1
 
         if (0 <= prevItemIndex) {
             currentPage.value = prevItemIndex

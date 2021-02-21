@@ -2,6 +2,7 @@
 buildscript {
     ext {
         kotlin_version = '1.4.30'
+        kotlin_coroutines_version = '1.4.2'
         koin_version = '2.2.2'
 
         kotlinxSerializationPluginVersion = '1.4.21'
@@ -36,7 +37,7 @@ buildscript {
         appVersionName = '1.0'
 
         alphacepVoskAndroidVersion = '0.3.17'
-        rxPermissions = '0.10.2'
+        coroutinesPermissions = '2.1.2'
     }
 
     repositories {

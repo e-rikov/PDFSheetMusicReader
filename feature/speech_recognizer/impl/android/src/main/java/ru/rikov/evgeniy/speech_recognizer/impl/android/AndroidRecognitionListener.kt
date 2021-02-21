@@ -3,19 +3,19 @@ package ru.rikov.evgeniy.speech_recognizer.impl.android
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.SpeechRecognizer
-import io.reactivex.ObservableEmitter
+import kotlinx.coroutines.flow.MutableStateFlow
 import ru.rikov.evgeniy.speech_recognizer.main.model.RecognitionState
 import java.lang.IllegalStateException
 
 
 class AndroidRecognitionListener(
-    private val emitter: ObservableEmitter<RecognitionState>
+    private val stateFlow: MutableStateFlow<RecognitionState>
 ) : RecognitionListener {
 
     override fun onReadyForSpeech(bundle: Bundle) {}
 
     override fun onBeginningOfSpeech() {
-        emitter.onNext(RecognitionState.BeginningOfSpeech)
+        stateFlow.value = RecognitionState.BeginningOfSpeech
     }
 
     override fun onRmsChanged(v: Float) {}
@@ -23,7 +23,7 @@ class AndroidRecognitionListener(
     override fun onBufferReceived(bytes: ByteArray) {}
 
     override fun onEndOfSpeech() {
-        emitter.onNext(RecognitionState.EndOfSpeech)
+        stateFlow.value = RecognitionState.EndOfSpeech
     }
 
     override fun onError(errorCode: Int) {
@@ -41,16 +41,16 @@ class AndroidRecognitionListener(
         }
 
         val error = IllegalStateException(errorText)
-        emitter.onNext(RecognitionState.Error(error))
+        stateFlow.value = RecognitionState.Error(error)
     }
 
     override fun onResults(bundle: Bundle) {
         val data = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-        emitter.onNext(RecognitionState.Result(data!![0]))
+        stateFlow.value = RecognitionState.Result(data!![0])
     }
 
     override fun onPartialResults(bundle: Bundle) {
-        emitter.onNext(RecognitionState.PartialResult(""))
+        stateFlow.value = RecognitionState.PartialResult("")
     }
 
     override fun onEvent(i: Int, bundle: Bundle) {}

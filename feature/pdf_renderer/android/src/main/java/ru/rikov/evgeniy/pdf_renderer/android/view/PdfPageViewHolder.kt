@@ -3,9 +3,10 @@ package ru.rikov.evgeniy.pdf_renderer.android.view
 import android.graphics.pdf.PdfRenderer
 import android.view.ViewGroup
 import android.widget.ImageView
-import io.reactivex.Single
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.rikov.evgeniy.core.android.recycler_view.AppRecyclerViewHolder
 import ru.rikov.evgeniy.core.android.tools.is26orMore
 import ru.rikov.evgeniy.pdf_renderer.android.R
@@ -23,16 +24,15 @@ class PdfPageViewHolder(
         when {
             pdfRenderer == null -> return
 
-            is26orMore() -> Single
-                .fromCallable {
-                    synchronized(pdfRenderer) {
-                        pdfRenderer.openPage(item).renderPage()
-                    }
+            is26orMore() -> GlobalScope.launch(Dispatchers.IO) {
+                val bitmap = synchronized(pdfRenderer) {
+                    pdfRenderer.openPage(item).renderPage()
                 }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .onErrorResumeNext { Single.never() }
-                .subscribe(pageBitmap::setImageBitmap)
+
+                withContext(Dispatchers.Main) {
+                    pageBitmap.setImageBitmap(bitmap)
+                }
+            }
 
             else -> pdfRenderer.openPage(item)?.apply {
                 pageBitmap.setImageBitmap(renderPage())

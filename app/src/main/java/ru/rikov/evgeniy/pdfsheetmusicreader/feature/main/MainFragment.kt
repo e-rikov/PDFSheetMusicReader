@@ -7,7 +7,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.tbruyelle.rxpermissions2.RxPermissions
+import androidx.lifecycle.lifecycleScope
+import com.markodevcic.peko.Peko
+import com.markodevcic.peko.PermissionResult
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.android.viewmodel.ext.android.viewModel
 import ru.rikov.evgeniy.core.android.base.BaseFragment
@@ -23,6 +28,8 @@ class MainFragment private constructor() : BaseFragment() {
     
     private val viewModel by viewModel<MainViewModelImpl>()
     private val pdfRenderer by inject<AppPdfRenderer>()
+
+    private var uiStateJob: Job? = null
 
     private var _binding: MainFragmentBinding? = null
     private val binding get() = _binding!!
@@ -48,33 +55,46 @@ class MainFragment private constructor() : BaseFragment() {
     @SuppressLint("CheckResult")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        initPdfRenderer()
+        checkPermission()
+    }
 
+    private fun checkPermission() {
+        lifecycleScope.launch {
+            val result = Peko.requestPermissionsAsync(
+                requireContext(),
+                Manifest.permission.RECORD_AUDIO
+            )
+
+            if (result is PermissionResult.Granted) {
+                observeViewModel()
+            }
+        }
+    }
+
+    private fun initPdfRenderer() {
         pdfRenderer.init(
             activity = requireActivity(),
             pages = binding.pages,
-            waiter = binding.waiter)
+            waiter = binding.waiter
+        )
 
-        pdfRenderer
-            .showPdf(fileUri)
-            .subscribe(viewModel::init)
-
-        RxPermissions(this)
-            .request(Manifest.permission.RECORD_AUDIO)
-            .subscribe { granted ->
-                if (granted) {
-                    observeViewModel()
-                }
-            }
+        lifecycleScope.launch {
+            val pageCount = pdfRenderer.showPdf(fileUri)
+            viewModel.init(pageCount)
+        }
     }
 
     private fun observeViewModel() {
-        viewModel.currentPage.observeNotNull(pdfRenderer::scrollToPage)
+        lifecycleScope.launch {
+            viewModel.currentPage.collect(pdfRenderer::scrollToPage)
+        }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-        pdfRenderer.close()
+        uiStateJob?.cancel()
     }
 
     

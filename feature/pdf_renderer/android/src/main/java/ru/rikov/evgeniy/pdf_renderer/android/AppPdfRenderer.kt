@@ -4,7 +4,6 @@ import android.app.Activity
 import android.net.Uri
 import android.view.View
 import androidx.viewpager2.widget.ViewPager2
-import io.reactivex.Single
 import ru.rikov.evgeniy.core.main.AppClosable
 
 
@@ -21,11 +20,11 @@ interface AppPdfRenderer : AppClosable {
     /**
      * Loads PDF by Uri asynchronously and returns loaded page count.
      */
-    fun showPdf(pdfFileUri: Uri?): Single<Int>
+    suspend fun showPdf(pdfFileUri: Uri?): Int
 
     /**
      * Loads PDF by path asynchronously and returns loaded page count.
      */
-    fun showPdf(pdfFilePath: String?): Single<Int>
+    suspend fun showPdf(pdfFilePath: String?): Int
 
 }

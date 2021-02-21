@@ -41,8 +41,7 @@ dependencies {
     implementation project(':core:android')
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-    implementation "io.reactivex.rxjava2:rxjava:$rxJavaVersion"
-    implementation "io.reactivex.rxjava2:rxandroid:$rxAndroidVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$kotlin_coroutines_version"
 
     implementation "androidx.core:core-ktx:$androidxCoreKtx"
     implementation "androidx.appcompat:appcompat:$androidxAppcompat"

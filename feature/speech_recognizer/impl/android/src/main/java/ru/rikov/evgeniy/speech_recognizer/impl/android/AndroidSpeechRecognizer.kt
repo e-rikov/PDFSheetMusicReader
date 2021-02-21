@@ -4,8 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer.*
-import io.reactivex.Observable
-import io.reactivex.ObservableEmitter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 import ru.rikov.evgeniy.speech_recognizer.main.AppSpeechRecognizer
 import ru.rikov.evgeniy.speech_recognizer.main.model.RecognitionState
 import java.util.*
@@ -14,11 +19,11 @@ import java.util.*
 class AndroidSpeechRecognizer(context: Context) : AppSpeechRecognizer {
 
     private val speechRecognizer = createSpeechRecognizer(context)
-    private var observable: Observable<RecognitionState>? = null
-    private var emitter: ObservableEmitter<RecognitionState>? = null
+    private var stateFlow = MutableStateFlow<RecognitionState>(RecognitionState.Initialized)
+    private var job: Job? = null
 
 
-    override fun startListening(): Observable<RecognitionState> {
+    override fun startListening(): StateFlow<RecognitionState> {
         val speechRecognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
 
         speechRecognizerIntent.putExtra(
@@ -29,31 +34,27 @@ class AndroidSpeechRecognizer(context: Context) : AppSpeechRecognizer {
             RecognizerIntent.EXTRA_LANGUAGE,
             Locale.getDefault())
 
-        val observable = this.observable ?:
-            Observable
-                .create<RecognitionState> { emitter ->
-                    this.emitter = emitter
-                    speechRecognizer.setRecognitionListener(AndroidRecognitionListener(emitter))
-                }
-                .doOnNext {
+        if (job == null) {
+            val recognitionListener = AndroidRecognitionListener(stateFlow)
+            speechRecognizer.setRecognitionListener(recognitionListener)
+
+            job = GlobalScope.launch(Dispatchers.Main) {
+                stateFlow.collect {
                     startListening()
                 }
-                .apply {
-                    this@AndroidSpeechRecognizer.observable = this
-                }
+            }
+        }
 
         speechRecognizer.startListening(speechRecognizerIntent)
 
-        return observable
+        return stateFlow
     }
 
     override fun stopListening() {
         speechRecognizer.stopListening()
 
-        emitter?.onComplete()
-        emitter = null
-
-        observable = null
+        job?.cancel()
+        job = null
     }
 
 }

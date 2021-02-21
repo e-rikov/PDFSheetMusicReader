@@ -3,6 +3,8 @@ package ru.rikov.evgeniy.speech_recognizer.main.model
 
 sealed class RecognitionState {
 
+    object Initialized : RecognitionState()
+
     object BeginningOfSpeech : RecognitionState()
 
     object EndOfSpeech : RecognitionState()
