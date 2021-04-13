@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.android.viewmodel.ext.android.viewModel
 import ru.rikov.evgeniy.core.android.base.BaseFragment
+import ru.rikov.evgeniy.core.android.tools.autoCleaned
 import ru.rikov.evgeniy.pdf_renderer.android.AppPdfRenderer
 import ru.rikov.evgeniy.pdfsheetmusicreader.databinding.MainFragmentBinding
 import ru.rikov.evgeniy.pdfsheetmusicreader.di.mainScreenModule
@@ -31,8 +32,7 @@ class MainFragment private constructor() : BaseFragment() {
 
     private var uiStateJob: Job? = null
 
-    private var _binding: MainFragmentBinding? = null
-    private val binding get() = _binding!!
+    private var binding: MainFragmentBinding by autoCleaned()
 
     private val fileUri: Uri? by lazy(LazyThreadSafetyMode.NONE) {
         arguments?.getParcelable(FILE_URI_ARG) as Uri?
@@ -48,7 +48,7 @@ class MainFragment private constructor() : BaseFragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
-        _binding = MainFragmentBinding.inflate(inflater, container, false)
+        binding = MainFragmentBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -93,7 +93,6 @@ class MainFragment private constructor() : BaseFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        _binding = null
         uiStateJob?.cancel()
     }
 
