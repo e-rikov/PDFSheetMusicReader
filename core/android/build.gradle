@@ -45,6 +45,8 @@ dependencies {
     implementation "androidx.annotation:annotation:$androidxAnnotation"
     implementation "androidx.databinding:viewbinding:$androidxViewbinding"
     implementation "androidx.fragment:fragment-ktx:$androidxFragment"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:$androidxLifecycle"
+    implementation "androidx.lifecycle:lifecycle-common-java8:$androidxLifecycle"
     implementation "androidx.recyclerview:recyclerview:$androidxRecyclerview"
 
 }
